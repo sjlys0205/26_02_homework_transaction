@@ -15,6 +15,15 @@ export function createRepository(db) {
     mine(userId) { return db.prepare(selection+' WHERE a.user_id=? ORDER BY a.id DESC').all(userId); },
     forEvent(eventId) { return db.prepare(selection+' WHERE a.event_id=? ORDER BY a.id').all(eventId); },
     approvedCount(eventId) { return db.prepare("SELECT COUNT(*) AS n FROM applications WHERE event_id=? AND status='APPROVED'").get(eventId).n; },
+    // (R5)자동 승급 대상: 같은 행사의 PENDING 중 created_at -> id 순서로 우선순위 구현 후 첫 1건.
+    // (T20_status)CANCELLED·REVOKED·APPROVED상태 제외
+    // (T20_event_id) 다른 행사는 WHERE 조건에서 제외
+    // (T18_ORDERBY) 먼저 신청한 사람에게 우선권 부여
+    // (T19) 신청 시각이 같다면 ID가 작은 쪽 우선권 부여
+    // (T32) LIMIT 1: 승인 취소 1회당 최대 1명만 승급 대상으로 선택
+
+    nextPending(eventId) { return db.prepare(`SELECT id FROM applications
+      WHERE event_id=? AND status='PENDING' ORDER BY created_at ASC, id ASC LIMIT 1`).get(eventId); },
     insert(eventId,userId) { const r=db.prepare("INSERT INTO applications(event_id,user_id,status) VALUES (?,?,'PENDING')").run(eventId,userId); return this.application(Number(r.lastInsertRowid)); },
     // 대기 순서와 이력 저장 시점, 트랜잭션 경계는 서비스에서 결정합니다.
     history(id) { return db.prepare(`SELECT id,application_id AS applicationId,actor_id AS actorId,
