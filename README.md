@@ -100,9 +100,73 @@ npm run db:reset
 
 ## 제출 전 작성할 내용
 
-이 부분을 본인의 서비스 소개, 변경 파일, 구현 완료 여부, 실행 환경, 알려진 문제, 보고서·검증 증거 링크와 AI 사용 요약으로 바꾸세요. GitHub URL·커밋 SHA를 LMS에 제출하고 보고서 PDF를 저장소 `docs/report.pdf`와 LMS에 같은 버전으로 첨부합니다.
+### 제출 정보
+- 웹서비스설계 과제 2 · 202012174 김선재
+- 저장소: https://github.com/sjlys0205/26_02_homework_transaction
+- 보고서: [docs/report.pdf](docs/report.pdf) · 검증 증거: [docs/screenshot/](docs/screenshot/)
 
-`node_modules`, 생성 DB·서명 키, 실제 `.env`·JWT와 개인 정보는 제출하지 않습니다. 제공 코드와 직접 구현한 부분을 구분합니다.
+### 서비스 소개
+CAMPUS 프로그램 신청 서비스(제공 화면 그대로 사용, Express 5 + node:sqlite + JWT)는 학생이 행사에 참가를 신청하고, 담당 운영자가 승인·승인 취소하는 서비스입니다.
+이번 과제에서 신청·대기 취소·직접 승인·승인 취소 업무 규칙(R1~R8)을 구현했습니다.
+승인 취소 시 같은 행사의 첫 대기자 1명을 자동 승급하고, 모든 상태 변경과 이력을 하나의 트랜잭션으로 저장합니다.
+화면 주제와 API 계약은 제공된 그대로 유지했습니다.
+
+### 설치·실행·초기화
+| 단계 | 명령 |
+|---|---|
+| 버전 확인 | `node --version` (v24.x) |
+| 설치 | `npm ci` |
+| 테스트 | `npm test` / `npm run test:assignment` / `npm run test:advanced` |
+| 실행 | `npm start` → http://127.0.0.1:3000 (종료: Ctrl+C) |
+| DB 초기화 | 서버 종료 후 `npm run db:reset` → `RESET` 입력 |
+| 증거 기록(선택) | `node scripts/evidence.js` → `docs/evidence/T01-T32.md` 생성 (임시 DB 사용) |
+
+### 변경 파일 (제공 코드 기준 커밋 `49f9271` 대비)
+| 파일 | 변경 내용 |
+|---|---|
+| `src/application-service.js` | TODO-01~04 구현. `inTransaction()`(BEGIN IMMEDIATE·COMMIT·ROLLBACK), `managedApplication()`(존재·담당자 검사), apply·cancel·approve·revoke |
+| `src/repository.js` | `nextPending()` 추가만 함 (같은 행사 PENDING, `created_at ASC, id ASC`, `LIMIT 1`). 기존 함수는 수정하지 않음 |
+| `docs/screenshot/` | 구현 전(B)·후(A) 테스트, 화면 검증(U), 새 폴더 재현(C), 증거 실행(E) 캡처 24장 |
+| `scripts/evidence.js` | T01~T32 실측 증거 기록 보조 스크립트 추가 (서비스·테스트 코드 변경 없음) |
+| `docs/evidence/T01-T32.md` | evidence.js 실행 결과 (요청 165건, 기대 상태 일치 165건) |
+| `docs/report.pdf` | 보고서 |
+| `README.md` | "제출 전 작성할 내용" 절만 작성 (나머지 제공 내용은 수정하지 않음) |
+
+그 밖의 제공 파일(`app.js`, `db.js`, `auth.js`, `public/`, `tests/` 등)은 변경하지 않았습니다. 테스트 기대값도 변경하지 않았습니다.
+`node_modules`, 생성 DB(`data/app.sqlite`)·서명 키(`data/jwt-secret.txt`), `.env`·JWT는 `.gitignore`로 제외해 제출하지 않았습니다.
+
+### 구현 완료 여부
+| 항목 | 결과 | 증거 |
+|---|---|---|
+| TODO-01 신청 / 02 대기 취소 / 03 직접 승인 / 04 승인 취소·자동 승급 | 완료 | `src/application-service.js` |
+| `npm test` 기반 기능 | 4/4 통과 | `docs/screenshot/A01.jpg` |
+| `npm run test:assignment` T01~T32 | 32/32 통과 | `docs/screenshot/A02.jpg` |
+| `npm run test:advanced` (선택 심화) | 1/1 통과 | `docs/screenshot/A03.jpg` |
+| 화면 검증 U01~U05 | 5/5 확인 | `docs/screenshot/U01.jpg`, `U02_1~U05_2.jpg` |
+| 구현 전 기준 결과 | `npm test` 4/4, `test:assignment` 2/32, 화면 501 | `docs/screenshot/B01~B03.jpg` |
+| 새 폴더 clone 재현 | 설치·테스트·실행·초기화 성공 | `docs/screenshot/C01~C05.jpg` |
+| T01~T32 실측 증거 | 요청 165건 중 기대 상태 일치 165건 | `docs/evidence/T01-T32.md`, `docs/screenshot/E01.jpg` |
+
+### 실행 환경
+Windows 11 Home · Node.js v24.22.0 · npm 11.19.1 · 브라우저 Microsoft Edge
+
+### 알려진 문제와 한계
+- `npm start` 실행 시 "TODO 구현 전 501입니다" 문구는 제공 `src/server.js`의 고정 안내 문구입니다. 구현 여부와 무관해서 수정하지 않았습니다.
+- 동시성 보호는 `BEGIN IMMEDIATE` 쓰기 잠금에 의존합니다. 같은 SQLite 파일을 공유하는 프로세스 사이에서만 유효합니다.
+- 선택 심화 테스트 20회 통과는 모든 경쟁 상황이 없다는 증명이 아닙니다.
+- 비교 실험: 일반 `BEGIN`으로 바꾸면 `[200, 500]`으로 실패했고, 서버 로그는 `database is locked`(SQLITE_BUSY)였습니다.
+
+### AI 사용 요약
+Claude Code(Claude Opus 5.5)를 사용했습니다. 상세 내용은 보고서의 "AI 활용과 참고 자료"에 있습니다.
+
+| 사용 범위 | 본인이 직접 한 일 |
+|---|---|
+| 과제 문서 분석과 진행 계획 | 계획 확인, 일정 조정 |
+| `application-service.js` TODO-01~04와 `repository.js` `nextPending()` 초안 작성 | 코드 이해, 주석 직접 작성·수정, 코드 및 주석 검토 결과 반영 |
+| 코드와 테스트(T18~T20 등) 설명 | 모든 테스트 직접 실행·캡처 (B·A) |
+| 일반 BEGIN과 BEGIN IMMEDIATE 비교 실험 | 화면 검증 U01~U05 직접 수행·캡처 |
+| 캡처·주석 검토, README 초안 | 커밋 메시지 승인, 보고서 퇴고 진행 |
+| `scripts/evidence.js` 증거 기록 스크립트 작성 | 직접 실행(165/165)·로그 검토 후 보고서 반영 |
 
 ## 참고 문서
 
